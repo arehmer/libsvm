@@ -3,24 +3,36 @@
 
 #define LIBSVM_VERSION 332
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+//#ifdef __cplusplus
+//extern "C" {
+//#endif
 
-extern int libsvm_version;
+//extern int libsvm_version;
+#include <vector>
+
+namespace libsvm{
 
 struct svm_node
 {
 	int index;
-	double value;
+	float value;
 };
+
 
 struct svm_problem
 {
 	int l;
-	double *y;
+	float *y;
 	struct svm_node **x;
 };
+
+
+//struct svm_problem
+//{
+//    int l;
+//    std::vector<double> y;
+//    std::vector<std::vector<svm_node*>> x;
+//};
 
 enum { C_SVC, NU_SVC, ONE_CLASS, EPSILON_SVR, NU_SVR };	/* svm_type */
 enum { LINEAR, POLY, RBF, SIGMOID, PRECOMPUTED }; /* kernel_type */
@@ -98,8 +110,10 @@ int svm_check_probability_model(const struct svm_model *model);
 
 void svm_set_print_string_function(void (*print_func)(const char *));
 
-#ifdef __cplusplus
-}
-#endif
+//#ifdef __cplusplus
+//}
+//#endif
+
+} //libsvm
 
 #endif /* _LIBSVM_H */

@@ -12,6 +12,9 @@
 #include <omp.h>
 #endif
 
+
+namespace libsvm {
+
 int libsvm_version = LIBSVM_VERSION;
 typedef float Qfloat;
 typedef signed char schar;
@@ -1319,130 +1322,130 @@ private:
 	Cache *cache;
 	double *QD;
 };
-
-class ONE_CLASS_Q: public Kernel
-{
-public:
-	ONE_CLASS_Q(const svm_problem& prob, const svm_parameter& param)
-	:Kernel(prob.l, prob.x, param)
-	{
-		cache = new Cache(prob.l,(long int)(param.cache_size*(1<<20)));
-		QD = new double[prob.l];
-		for(int i=0;i<prob.l;i++)
-			QD[i] = (this->*kernel_function)(i,i);
-	}
-
-	Qfloat *get_Q(int i, int len) const
-	{
-		Qfloat *data;
-		int start, j;
-		if((start = cache->get_data(i,&data,len)) < len)
-		{
-			for(j=start;j<len;j++)
-				data[j] = (Qfloat)(this->*kernel_function)(i,j);
-		}
-		return data;
-	}
-
-	double *get_QD() const
-	{
-		return QD;
-	}
-
-	void swap_index(int i, int j) const
-	{
-		cache->swap_index(i,j);
-		Kernel::swap_index(i,j);
-		swap(QD[i],QD[j]);
-	}
-
-	~ONE_CLASS_Q()
-	{
-		delete cache;
-		delete[] QD;
-	}
-private:
-	Cache *cache;
-	double *QD;
-};
-
-class SVR_Q: public Kernel
-{
-public:
-	SVR_Q(const svm_problem& prob, const svm_parameter& param)
-	:Kernel(prob.l, prob.x, param)
-	{
-		l = prob.l;
-		cache = new Cache(l,(long int)(param.cache_size*(1<<20)));
-		QD = new double[2*l];
-		sign = new schar[2*l];
-		index = new int[2*l];
-		for(int k=0;k<l;k++)
-		{
-			sign[k] = 1;
-			sign[k+l] = -1;
-			index[k] = k;
-			index[k+l] = k;
-			QD[k] = (this->*kernel_function)(k,k);
-			QD[k+l] = QD[k];
-		}
-		buffer[0] = new Qfloat[2*l];
-		buffer[1] = new Qfloat[2*l];
-		next_buffer = 0;
-	}
-
-	void swap_index(int i, int j) const
-	{
-		swap(sign[i],sign[j]);
-		swap(index[i],index[j]);
-		swap(QD[i],QD[j]);
-	}
-
-	Qfloat *get_Q(int i, int len) const
-	{
-		Qfloat *data;
-		int j, real_i = index[i];
-		if(cache->get_data(real_i,&data,l) < l)
-		{
-#ifdef _OPENMP
-#pragma omp parallel for private(j) schedule(guided)
-#endif
-			for(j=0;j<l;j++)
-				data[j] = (Qfloat)(this->*kernel_function)(real_i,j);
-		}
-
-		// reorder and copy
-		Qfloat *buf = buffer[next_buffer];
-		next_buffer = 1 - next_buffer;
-		schar si = sign[i];
-		for(j=0;j<len;j++)
-			buf[j] = (Qfloat) si * (Qfloat) sign[j] * data[index[j]];
-		return buf;
-	}
-
-	double *get_QD() const
-	{
-		return QD;
-	}
-
-	~SVR_Q()
-	{
-		delete cache;
-		delete[] sign;
-		delete[] index;
-		delete[] buffer[0];
-		delete[] buffer[1];
-		delete[] QD;
-	}
-private:
-	int l;
-	Cache *cache;
-	schar *sign;
-	int *index;
-	mutable int next_buffer;
-	Qfloat *buffer[2];
-	double *QD;
-};
+//
+//class ONE_CLASS_Q: public Kernel
+//{
+//public:
+//	ONE_CLASS_Q(const svm_problem& prob, const svm_parameter& param)
+//	:Kernel(prob.l, prob.x, param)
+//	{
+//		cache = new Cache(prob.l,(long int)(param.cache_size*(1<<20)));
+//		QD = new double[prob.l];
+//		for(int i=0;i<prob.l;i++)
+//			QD[i] = (this->*kernel_function)(i,i);
+//	}
+//
+//	Qfloat *get_Q(int i, int len) const
+//	{
+//		Qfloat *data;
+//		int start, j;
+//		if((start = cache->get_data(i,&data,len)) < len)
+//		{
+//			for(j=start;j<len;j++)
+//				data[j] = (Qfloat)(this->*kernel_function)(i,j);
+//		}
+//		return data;
+//	}
+//
+//	double *get_QD() const
+//	{
+//		return QD;
+//	}
+//
+//	void swap_index(int i, int j) const
+//	{
+//		cache->swap_index(i,j);
+//		Kernel::swap_index(i,j);
+//		swap(QD[i],QD[j]);
+//	}
+//
+//	~ONE_CLASS_Q()
+//	{
+//		delete cache;
+//		delete[] QD;
+//	}
+//private:
+//	Cache *cache;
+//	double *QD;
+//};
+//
+//class SVR_Q: public Kernel
+//{
+//public:
+//	SVR_Q(const svm_problem& prob, const svm_parameter& param)
+//	:Kernel(prob.l, prob.x, param)
+//	{
+//		l = prob.l;
+//		cache = new Cache(l,(long int)(param.cache_size*(1<<20)));
+//		QD = new double[2*l];
+//		sign = new schar[2*l];
+//		index = new int[2*l];
+//		for(int k=0;k<l;k++)
+//		{
+//			sign[k] = 1;
+//			sign[k+l] = -1;
+//			index[k] = k;
+//			index[k+l] = k;
+//			QD[k] = (this->*kernel_function)(k,k);
+//			QD[k+l] = QD[k];
+//		}
+//		buffer[0] = new Qfloat[2*l];
+//		buffer[1] = new Qfloat[2*l];
+//		next_buffer = 0;
+//	}
+//
+//	void swap_index(int i, int j) const
+//	{
+//		swap(sign[i],sign[j]);
+//		swap(index[i],index[j]);
+//		swap(QD[i],QD[j]);
+//	}
+//
+//	Qfloat *get_Q(int i, int len) const
+//	{
+//		Qfloat *data;
+//		int j, real_i = index[i];
+//		if(cache->get_data(real_i,&data,l) < l)
+//		{
+//#ifdef _OPENMP
+//#pragma omp parallel for private(j) schedule(guided)
+//#endif
+//			for(j=0;j<l;j++)
+//				data[j] = (Qfloat)(this->*kernel_function)(real_i,j);
+//		}
+//
+//		// reorder and copy
+//		Qfloat *buf = buffer[next_buffer];
+//		next_buffer = 1 - next_buffer;
+//		schar si = sign[i];
+//		for(j=0;j<len;j++)
+//			buf[j] = (Qfloat) si * (Qfloat) sign[j] * data[index[j]];
+//		return buf;
+//	}
+//
+//	double *get_QD() const
+//	{
+//		return QD;
+//	}
+//
+//	~SVR_Q()
+//	{
+//		delete cache;
+//		delete[] sign;
+//		delete[] index;
+//		delete[] buffer[0];
+//		delete[] buffer[1];
+//		delete[] QD;
+//	}
+//private:
+//	int l;
+//	Cache *cache;
+//	schar *sign;
+//	int *index;
+//	mutable int next_buffer;
+//	Qfloat *buffer[2];
+//	double *QD;
+//};
 
 //
 // construct and solve various formulations
@@ -1482,168 +1485,168 @@ static void solve_c_svc(
 	delete[] y;
 }
 
-static void solve_nu_svc(
-	const svm_problem *prob, const svm_parameter *param,
-	double *alpha, Solver::SolutionInfo* si)
-{
-	int i;
-	int l = prob->l;
-	double nu = param->nu;
-
-	schar *y = new schar[l];
-
-	for(i=0;i<l;i++)
-		if(prob->y[i]>0)
-			y[i] = +1;
-		else
-			y[i] = -1;
-
-	double sum_pos = nu*l/2;
-	double sum_neg = nu*l/2;
-
-	for(i=0;i<l;i++)
-		if(y[i] == +1)
-		{
-			alpha[i] = min(1.0,sum_pos);
-			sum_pos -= alpha[i];
-		}
-		else
-		{
-			alpha[i] = min(1.0,sum_neg);
-			sum_neg -= alpha[i];
-		}
-
-	double *zeros = new double[l];
-
-	for(i=0;i<l;i++)
-		zeros[i] = 0;
-
-	Solver_NU s;
-	s.Solve(l, SVC_Q(*prob,*param,y), zeros, y,
-		alpha, 1.0, 1.0, param->eps, si,  param->shrinking);
-	double r = si->r;
-
-	info("C = %f\n",1/r);
-
-	for(i=0;i<l;i++)
-		alpha[i] *= y[i]/r;
-
-	si->rho /= r;
-	si->obj /= (r*r);
-	si->upper_bound_p = 1/r;
-	si->upper_bound_n = 1/r;
-
-	delete[] y;
-	delete[] zeros;
-}
-
-static void solve_one_class(
-	const svm_problem *prob, const svm_parameter *param,
-	double *alpha, Solver::SolutionInfo* si)
-{
-	int l = prob->l;
-	double *zeros = new double[l];
-	schar *ones = new schar[l];
-	int i;
-
-	int n = (int)(param->nu*prob->l);	// # of alpha's at upper bound
-
-	for(i=0;i<n;i++)
-		alpha[i] = 1;
-	if(n<prob->l)
-		alpha[n] = param->nu * prob->l - n;
-	for(i=n+1;i<l;i++)
-		alpha[i] = 0;
-
-	for(i=0;i<l;i++)
-	{
-		zeros[i] = 0;
-		ones[i] = 1;
-	}
-
-	Solver s;
-	s.Solve(l, ONE_CLASS_Q(*prob,*param), zeros, ones,
-		alpha, 1.0, 1.0, param->eps, si, param->shrinking);
-
-	delete[] zeros;
-	delete[] ones;
-}
-
-static void solve_epsilon_svr(
-	const svm_problem *prob, const svm_parameter *param,
-	double *alpha, Solver::SolutionInfo* si)
-{
-	int l = prob->l;
-	double *alpha2 = new double[2*l];
-	double *linear_term = new double[2*l];
-	schar *y = new schar[2*l];
-	int i;
-
-	for(i=0;i<l;i++)
-	{
-		alpha2[i] = 0;
-		linear_term[i] = param->p - prob->y[i];
-		y[i] = 1;
-
-		alpha2[i+l] = 0;
-		linear_term[i+l] = param->p + prob->y[i];
-		y[i+l] = -1;
-	}
-
-	Solver s;
-	s.Solve(2*l, SVR_Q(*prob,*param), linear_term, y,
-		alpha2, param->C, param->C, param->eps, si, param->shrinking);
-
-	double sum_alpha = 0;
-	for(i=0;i<l;i++)
-	{
-		alpha[i] = alpha2[i] - alpha2[i+l];
-		sum_alpha += fabs(alpha[i]);
-	}
-	info("nu = %f\n",sum_alpha/(param->C*l));
-
-	delete[] alpha2;
-	delete[] linear_term;
-	delete[] y;
-}
-
-static void solve_nu_svr(
-	const svm_problem *prob, const svm_parameter *param,
-	double *alpha, Solver::SolutionInfo* si)
-{
-	int l = prob->l;
-	double C = param->C;
-	double *alpha2 = new double[2*l];
-	double *linear_term = new double[2*l];
-	schar *y = new schar[2*l];
-	int i;
-
-	double sum = C * param->nu * l / 2;
-	for(i=0;i<l;i++)
-	{
-		alpha2[i] = alpha2[i+l] = min(sum,C);
-		sum -= alpha2[i];
-
-		linear_term[i] = - prob->y[i];
-		y[i] = 1;
-
-		linear_term[i+l] = prob->y[i];
-		y[i+l] = -1;
-	}
-
-	Solver_NU s;
-	s.Solve(2*l, SVR_Q(*prob,*param), linear_term, y,
-		alpha2, C, C, param->eps, si, param->shrinking);
-
-	info("epsilon = %f\n",-si->r);
-
-	for(i=0;i<l;i++)
-		alpha[i] = alpha2[i] - alpha2[i+l];
-
-	delete[] alpha2;
-	delete[] linear_term;
-	delete[] y;
-}
+//static void solve_nu_svc(
+//	const svm_problem *prob, const svm_parameter *param,
+//	double *alpha, Solver::SolutionInfo* si)
+//{
+//	int i;
+//	int l = prob->l;
+//	double nu = param->nu;
+//
+//	schar *y = new schar[l];
+//
+//	for(i=0;i<l;i++)
+//		if(prob->y[i]>0)
+//			y[i] = +1;
+//		else
+//			y[i] = -1;
+//
+//	double sum_pos = nu*l/2;
+//	double sum_neg = nu*l/2;
+//
+//	for(i=0;i<l;i++)
+//		if(y[i] == +1)
+//		{
+//			alpha[i] = min(1.0,sum_pos);
+//			sum_pos -= alpha[i];
+//		}
+//		else
+//		{
+//			alpha[i] = min(1.0,sum_neg);
+//			sum_neg -= alpha[i];
+//		}
+//
+//	double *zeros = new double[l];
+//
+//	for(i=0;i<l;i++)
+//		zeros[i] = 0;
+//
+//	Solver_NU s;
+//	s.Solve(l, SVC_Q(*prob,*param,y), zeros, y,
+//		alpha, 1.0, 1.0, param->eps, si,  param->shrinking);
+//	double r = si->r;
+//
+//	info("C = %f\n",1/r);
+//
+//	for(i=0;i<l;i++)
+//		alpha[i] *= y[i]/r;
+//
+//	si->rho /= r;
+//	si->obj /= (r*r);
+//	si->upper_bound_p = 1/r;
+//	si->upper_bound_n = 1/r;
+//
+//	delete[] y;
+//	delete[] zeros;
+//}
+//
+//static void solve_one_class(
+//	const svm_problem *prob, const svm_parameter *param,
+//	double *alpha, Solver::SolutionInfo* si)
+//{
+//	int l = prob->l;
+//	double *zeros = new double[l];
+//	schar *ones = new schar[l];
+//	int i;
+//
+//	int n = (int)(param->nu*prob->l);	// # of alpha's at upper bound
+//
+//	for(i=0;i<n;i++)
+//		alpha[i] = 1;
+//	if(n<prob->l)
+//		alpha[n] = param->nu * prob->l - n;
+//	for(i=n+1;i<l;i++)
+//		alpha[i] = 0;
+//
+//	for(i=0;i<l;i++)
+//	{
+//		zeros[i] = 0;
+//		ones[i] = 1;
+//	}
+//
+//	Solver s;
+//	s.Solve(l, ONE_CLASS_Q(*prob,*param), zeros, ones,
+//		alpha, 1.0, 1.0, param->eps, si, param->shrinking);
+//
+//	delete[] zeros;
+//	delete[] ones;
+//}
+//
+//static void solve_epsilon_svr(
+//	const svm_problem *prob, const svm_parameter *param,
+//	double *alpha, Solver::SolutionInfo* si)
+//{
+//	int l = prob->l;
+//	double *alpha2 = new double[2*l];
+//	double *linear_term = new double[2*l];
+//	schar *y = new schar[2*l];
+//	int i;
+//
+//	for(i=0;i<l;i++)
+//	{
+//		alpha2[i] = 0;
+//		linear_term[i] = param->p - prob->y[i];
+//		y[i] = 1;
+//
+//		alpha2[i+l] = 0;
+//		linear_term[i+l] = param->p + prob->y[i];
+//		y[i+l] = -1;
+//	}
+//
+//	Solver s;
+//	s.Solve(2*l, SVR_Q(*prob,*param), linear_term, y,
+//		alpha2, param->C, param->C, param->eps, si, param->shrinking);
+//
+//	double sum_alpha = 0;
+//	for(i=0;i<l;i++)
+//	{
+//		alpha[i] = alpha2[i] - alpha2[i+l];
+//		sum_alpha += fabs(alpha[i]);
+//	}
+//	info("nu = %f\n",sum_alpha/(param->C*l));
+//
+//	delete[] alpha2;
+//	delete[] linear_term;
+//	delete[] y;
+//}
+//
+//static void solve_nu_svr(
+//	const svm_problem *prob, const svm_parameter *param,
+//	double *alpha, Solver::SolutionInfo* si)
+//{
+//	int l = prob->l;
+//	double C = param->C;
+//	double *alpha2 = new double[2*l];
+//	double *linear_term = new double[2*l];
+//	schar *y = new schar[2*l];
+//	int i;
+//
+//	double sum = C * param->nu * l / 2;
+//	for(i=0;i<l;i++)
+//	{
+//		alpha2[i] = alpha2[i+l] = min(sum,C);
+//		sum -= alpha2[i];
+//
+//		linear_term[i] = - prob->y[i];
+//		y[i] = 1;
+//
+//		linear_term[i+l] = prob->y[i];
+//		y[i+l] = -1;
+//	}
+//
+//	Solver_NU s;
+//	s.Solve(2*l, SVR_Q(*prob,*param), linear_term, y,
+//		alpha2, C, C, param->eps, si, param->shrinking);
+//
+//	info("epsilon = %f\n",-si->r);
+//
+//	for(i=0;i<l;i++)
+//		alpha[i] = alpha2[i] - alpha2[i+l];
+//
+//	delete[] alpha2;
+//	delete[] linear_term;
+//	delete[] y;
+//}
 
 //
 // decision_function
@@ -1665,18 +1668,18 @@ static decision_function svm_train_one(
 		case C_SVC:
 			solve_c_svc(prob,param,alpha,&si,Cp,Cn);
 			break;
-		case NU_SVC:
-			solve_nu_svc(prob,param,alpha,&si);
-			break;
-		case ONE_CLASS:
-			solve_one_class(prob,param,alpha,&si);
-			break;
-		case EPSILON_SVR:
-			solve_epsilon_svr(prob,param,alpha,&si);
-			break;
-		case NU_SVR:
-			solve_nu_svr(prob,param,alpha,&si);
-			break;
+		//case NU_SVC:
+		//	solve_nu_svc(prob,param,alpha,&si);
+		//	break;
+		//case ONE_CLASS:
+		//	solve_one_class(prob,param,alpha,&si);
+		//	break;
+		//case EPSILON_SVR:
+		//	solve_epsilon_svr(prob,param,alpha,&si);
+		//	break;
+		//case NU_SVR:
+		//	solve_nu_svr(prob,param,alpha,&si);
+		//	break;
 	}
 
 	info("obj = %f, rho = %f\n",si.obj,si.rho);
@@ -1900,91 +1903,91 @@ static void multiclass_probability(int k, double **r, double *p)
 }
 
 // Using cross-validation decision values to get parameters for SVC probability estimates
-static void svm_binary_svc_probability(
-	const svm_problem *prob, const svm_parameter *param,
-	double Cp, double Cn, double& probA, double& probB)
-{
-	int i;
-	int nr_fold = 5;
-	int *perm = Malloc(int,prob->l);
-	double *dec_values = Malloc(double,prob->l);
-
-	// random shuffle
-	for(i=0;i<prob->l;i++) perm[i]=i;
-	for(i=0;i<prob->l;i++)
-	{
-		int j = i+rand()%(prob->l-i);
-		swap(perm[i],perm[j]);
-	}
-	for(i=0;i<nr_fold;i++)
-	{
-		int begin = i*prob->l/nr_fold;
-		int end = (i+1)*prob->l/nr_fold;
-		int j,k;
-		struct svm_problem subprob;
-
-		subprob.l = prob->l-(end-begin);
-		subprob.x = Malloc(struct svm_node*,subprob.l);
-		subprob.y = Malloc(double,subprob.l);
-
-		k=0;
-		for(j=0;j<begin;j++)
-		{
-			subprob.x[k] = prob->x[perm[j]];
-			subprob.y[k] = prob->y[perm[j]];
-			++k;
-		}
-		for(j=end;j<prob->l;j++)
-		{
-			subprob.x[k] = prob->x[perm[j]];
-			subprob.y[k] = prob->y[perm[j]];
-			++k;
-		}
-		int p_count=0,n_count=0;
-		for(j=0;j<k;j++)
-			if(subprob.y[j]>0)
-				p_count++;
-			else
-				n_count++;
-
-		if(p_count==0 && n_count==0)
-			for(j=begin;j<end;j++)
-				dec_values[perm[j]] = 0;
-		else if(p_count > 0 && n_count == 0)
-			for(j=begin;j<end;j++)
-				dec_values[perm[j]] = 1;
-		else if(p_count == 0 && n_count > 0)
-			for(j=begin;j<end;j++)
-				dec_values[perm[j]] = -1;
-		else
-		{
-			svm_parameter subparam = *param;
-			subparam.probability=0;
-			subparam.C=1.0;
-			subparam.nr_weight=2;
-			subparam.weight_label = Malloc(int,2);
-			subparam.weight = Malloc(double,2);
-			subparam.weight_label[0]=+1;
-			subparam.weight_label[1]=-1;
-			subparam.weight[0]=Cp;
-			subparam.weight[1]=Cn;
-			struct svm_model *submodel = svm_train(&subprob,&subparam);
-			for(j=begin;j<end;j++)
-			{
-				svm_predict_values(submodel,prob->x[perm[j]],&(dec_values[perm[j]]));
-				// ensure +1 -1 order; reason not using CV subroutine
-				dec_values[perm[j]] *= submodel->label[0];
-			}
-			svm_free_and_destroy_model(&submodel);
-			svm_destroy_param(&subparam);
-		}
-		free(subprob.x);
-		free(subprob.y);
-	}
-	sigmoid_train(prob->l,dec_values,prob->y,probA,probB);
-	free(dec_values);
-	free(perm);
-}
+//static void svm_binary_svc_probability(
+//	const svm_problem *prob, const svm_parameter *param,
+//	double Cp, double Cn, double& probA, double& probB)
+//{
+//	int i;
+//	int nr_fold = 5;
+//	int *perm = Malloc(int,prob->l);
+//	double *dec_values = Malloc(double,prob->l);
+//
+//	// random shuffle
+//	for(i=0;i<prob->l;i++) perm[i]=i;
+//	for(i=0;i<prob->l;i++)
+//	{
+//		int j = i+rand()%(prob->l-i);
+//		swap(perm[i],perm[j]);
+//	}
+//	for(i=0;i<nr_fold;i++)
+//	{
+//		int begin = i*prob->l/nr_fold;
+//		int end = (i+1)*prob->l/nr_fold;
+//		int j,k;
+//		struct svm_problem subprob;
+//
+//		subprob.l = prob->l-(end-begin);
+//		subprob.x = Malloc(struct svm_node*,subprob.l);
+//		subprob.y = Malloc(double,subprob.l);
+//
+//		k=0;
+//		for(j=0;j<begin;j++)
+//		{
+//			subprob.x[k] = prob->x[perm[j]];
+//			subprob.y[k] = prob->y[perm[j]];
+//			++k;
+//		}
+//		for(j=end;j<prob->l;j++)
+//		{
+//			subprob.x[k] = prob->x[perm[j]];
+//			subprob.y[k] = prob->y[perm[j]];
+//			++k;
+//		}
+//		int p_count=0,n_count=0;
+//		for(j=0;j<k;j++)
+//			if(subprob.y[j]>0)
+//				p_count++;
+//			else
+//				n_count++;
+//
+//		if(p_count==0 && n_count==0)
+//			for(j=begin;j<end;j++)
+//				dec_values[perm[j]] = 0;
+//		else if(p_count > 0 && n_count == 0)
+//			for(j=begin;j<end;j++)
+//				dec_values[perm[j]] = 1;
+//		else if(p_count == 0 && n_count > 0)
+//			for(j=begin;j<end;j++)
+//				dec_values[perm[j]] = -1;
+//		else
+//		{
+//			svm_parameter subparam = *param;
+//			subparam.probability=0;
+//			subparam.C=1.0;
+//			subparam.nr_weight=2;
+//			subparam.weight_label = Malloc(int,2);
+//			subparam.weight = Malloc(double,2);
+//			subparam.weight_label[0]=+1;
+//			subparam.weight_label[1]=-1;
+//			subparam.weight[0]=Cp;
+//			subparam.weight[1]=Cn;
+//			struct svm_model *submodel = svm_train(&subprob,&subparam);
+//			for(j=begin;j<end;j++)
+//			{
+//				svm_predict_values(submodel,prob->x[perm[j]],&(dec_values[perm[j]]));
+//				// ensure +1 -1 order; reason not using CV subroutine
+//				dec_values[perm[j]] *= submodel->label[0];
+//			}
+//			svm_free_and_destroy_model(&submodel);
+//			svm_destroy_param(&subparam);
+//		}
+//		free(subprob.x);
+//		free(subprob.y);
+//	}
+//	sigmoid_train(prob->l,dec_values,prob->y,probA,probB);
+//	free(dec_values);
+//	free(perm);
+//}
 
 // Binning method from the oneclass_prob paper by Que and Lin to predict the probability as a normal instance (i.e., not an outlier)
 static double predict_one_class_probability(const svm_model *model, double dec_value)
@@ -2018,50 +2021,50 @@ static int compare_double(const void *a, const void *b)
 }
 
 // Get parameters for one-class SVM probability estimates
-static int svm_one_class_probability(const svm_problem *prob, const svm_model *model, double *prob_density_marks)
-{
-	double *dec_values = Malloc(double,prob->l);
-	double *pred_results = Malloc(double,prob->l);
-	int ret = 0;
-	int nr_marks = 10;
-
-	for(int i=0;i<prob->l;i++)
-		pred_results[i] = svm_predict_values(model,prob->x[i],&dec_values[i]);
-	qsort(dec_values,prob->l,sizeof(double),compare_double);
-
-	int neg_counter=0;
-	for(int i=0;i<prob->l;i++)
-		if(dec_values[i]>=0)
-		{
-			neg_counter = i;
-			break;
-		}
-
-	int pos_counter = prob->l-neg_counter;
-	if(neg_counter<nr_marks/2 || pos_counter<nr_marks/2)
-	{
-		fprintf(stderr,"WARNING: number of positive or negative decision values <%d; too few to do a probability estimation.\n",nr_marks/2);
-		ret = -1;
-	}
-	else
-	{
-		// Binning by density
-		double *tmp_marks = Malloc(double,nr_marks+1);
-		int mid = nr_marks/2;
-		for(int i=0;i<mid;i++)
-			tmp_marks[i] = dec_values[i*neg_counter/mid];
-		tmp_marks[mid] = 0;
-		for(int i=mid+1;i<nr_marks+1;i++)
-			tmp_marks[i] = dec_values[neg_counter-1+(i-mid)*pos_counter/mid];
-
-		for(int i=0;i<nr_marks;i++)
-			prob_density_marks[i] = (tmp_marks[i]+tmp_marks[i+1])/2;
-		free(tmp_marks);
-	}
-	free(dec_values);
-	free(pred_results);
-	return ret;
-}
+//static int svm_one_class_probability(const svm_problem *prob, const svm_model *model, double *prob_density_marks)
+//{
+//	double *dec_values = Malloc(double,prob->l);
+//	double *pred_results = Malloc(double,prob->l);
+//	int ret = 0;
+//	int nr_marks = 10;
+//
+//	for(int i=0;i<prob->l;i++)
+//		pred_results[i] = svm_predict_values(model,prob->x[i],&dec_values[i]);
+//	qsort(dec_values,prob->l,sizeof(double),compare_double);
+//
+//	int neg_counter=0;
+//	for(int i=0;i<prob->l;i++)
+//		if(dec_values[i]>=0)
+//		{
+//			neg_counter = i;
+//			break;
+//		}
+//
+//	int pos_counter = prob->l-neg_counter;
+//	if(neg_counter<nr_marks/2 || pos_counter<nr_marks/2)
+//	{
+//		fprintf(stderr,"WARNING: number of positive or negative decision values <%d; too few to do a probability estimation.\n",nr_marks/2);
+//		ret = -1;
+//	}
+//	else
+//	{
+//		// Binning by density
+//		double *tmp_marks = Malloc(double,nr_marks+1);
+//		int mid = nr_marks/2;
+//		for(int i=0;i<mid;i++)
+//			tmp_marks[i] = dec_values[i*neg_counter/mid];
+//		tmp_marks[mid] = 0;
+//		for(int i=mid+1;i<nr_marks+1;i++)
+//			tmp_marks[i] = dec_values[neg_counter-1+(i-mid)*pos_counter/mid];
+//
+//		for(int i=0;i<nr_marks;i++)
+//			prob_density_marks[i] = (tmp_marks[i]+tmp_marks[i+1])/2;
+//		free(tmp_marks);
+//	}
+//	free(dec_values);
+//	free(pred_results);
+//	return ret;
+//}
 
 // Return parameter of a Laplace distribution
 static double svm_svr_probability(
@@ -2182,59 +2185,62 @@ svm_model *svm_train(const svm_problem *prob, const svm_parameter *param)
 	model->param = *param;
 	model->free_sv = 0;	// XXX
 
+
+
 	if(param->svm_type == ONE_CLASS ||
 	   param->svm_type == EPSILON_SVR ||
 	   param->svm_type == NU_SVR)
 	{
 		// regression or one-class-svm
-		model->nr_class = 2;
-		model->label = NULL;
-		model->nSV = NULL;
-		model->probA = NULL; model->probB = NULL;
-		model->prob_density_marks = NULL;
-		model->sv_coef = Malloc(double *,1);
+        // does not apply to my problem --> comment out
+  //      model->nr_class = 2;
+		//model->label = NULL;
+		//model->nSV = NULL;
+		//model->probA = NULL; model->probB = NULL;
+		//model->prob_density_marks = NULL;
+		//model->sv_coef = Malloc(double *,1);
 
-		decision_function f = svm_train_one(prob,param,0,0);
-		model->rho = Malloc(double,1);
-		model->rho[0] = f.rho;
+		//decision_function f = svm_train_one(prob,param,0,0);
+		//model->rho = Malloc(double,1);
+		//model->rho[0] = f.rho;
 
-		int nSV = 0;
-		int i;
-		for(i=0;i<prob->l;i++)
-			if(fabs(f.alpha[i]) > 0) ++nSV;
-		model->l = nSV;
-		model->SV = Malloc(svm_node *,nSV);
-		model->sv_coef[0] = Malloc(double,nSV);
-		model->sv_indices = Malloc(int,nSV);
-		int j = 0;
-		for(i=0;i<prob->l;i++)
-			if(fabs(f.alpha[i]) > 0)
-			{
-				model->SV[j] = prob->x[i];
-				model->sv_coef[0][j] = f.alpha[i];
-				model->sv_indices[j] = i+1;
-				++j;
-			}
+		//int nSV = 0;
+		//int i;
+		//for(i=0;i<prob->l;i++)
+		//	if(fabs(f.alpha[i]) > 0) ++nSV;
+		//model->l = nSV;
+		//model->SV = Malloc(svm_node *,nSV);
+		//model->sv_coef[0] = Malloc(double,nSV);
+		//model->sv_indices = Malloc(int,nSV);
+		//int j = 0;
+		//for(i=0;i<prob->l;i++)
+		//	if(fabs(f.alpha[i]) > 0)
+		//	{
+		//		model->SV[j] = prob->x[i];
+		//		model->sv_coef[0][j] = f.alpha[i];
+		//		model->sv_indices[j] = i+1;
+		//		++j;
+		//	}
 
-		if(param->probability &&
-		   (param->svm_type == EPSILON_SVR ||
-		    param->svm_type == NU_SVR))
-		{
-			model->probA = Malloc(double,1);
-			model->probA[0] = svm_svr_probability(prob,param);
-		}
-		else if(param->probability && param->svm_type == ONE_CLASS)
-		{
-			int nr_marks = 10;
-			double *prob_density_marks = Malloc(double,nr_marks);
+		//if(param->probability &&
+		//   (param->svm_type == EPSILON_SVR ||
+		//    param->svm_type == NU_SVR))
+		//{
+		//	model->probA = Malloc(double,1);
+		//	model->probA[0] = svm_svr_probability(prob,param);
+		//}
+		//else if(param->probability && param->svm_type == ONE_CLASS)
+		//{
+		//	int nr_marks = 10;
+		//	double *prob_density_marks = Malloc(double,nr_marks);
 
-			if(svm_one_class_probability(prob,model,prob_density_marks) == 0)
-				model->prob_density_marks = prob_density_marks;
-			else
-				free(prob_density_marks);
-		}
+		//	if(svm_one_class_probability(prob,model,prob_density_marks) == 0)
+		//		model->prob_density_marks = prob_density_marks;
+		//	else
+		//		free(prob_density_marks);
+		//}
 
-		free(f.alpha);
+		//free(f.alpha);
 	}
 	else
 	{
@@ -2310,7 +2316,7 @@ svm_model *svm_train(const svm_problem *prob, const svm_parameter *param)
 				}
 
 				if(param->probability)
-					svm_binary_svc_probability(&sub_prob,param,weighted_C[i],weighted_C[j],probA[p],probB[p]);
+					//svm_binary_svc_probability(&sub_prob,param,weighted_C[i],weighted_C[j],probA[p],probB[p]);
 
 				f[p] = svm_train_one(&sub_prob,param,weighted_C[i],weighted_C[j]);
 				for(k=0;k<ci;k++)
@@ -2435,126 +2441,125 @@ svm_model *svm_train(const svm_problem *prob, const svm_parameter *param)
 }
 
 // Stratified cross validation
-void svm_cross_validation(const svm_problem *prob, const svm_parameter *param, int nr_fold, double *target)
-{
-	int i;
-	int *fold_start;
-	int l = prob->l;
-	int *perm = Malloc(int,l);
-	int nr_class;
-	if (nr_fold > l)
-	{
-		fprintf(stderr,"WARNING: # folds (%d) > # data (%d). Will use # folds = # data instead (i.e., leave-one-out cross validation)\n", nr_fold, l);
-		nr_fold = l;
-	}
-	fold_start = Malloc(int,nr_fold+1);
-	// stratified cv may not give leave-one-out rate
-	// Each class to l folds -> some folds may have zero elements
-	if((param->svm_type == C_SVC ||
-	    param->svm_type == NU_SVC) && nr_fold < l)
-	{
-		int *start = NULL;
-		int *label = NULL;
-		int *count = NULL;
-		svm_group_classes(prob,&nr_class,&label,&start,&count,perm);
-
-		// random shuffle and then data grouped by fold using the array perm
-		int *fold_count = Malloc(int,nr_fold);
-		int c;
-		int *index = Malloc(int,l);
-		for(i=0;i<l;i++)
-			index[i]=perm[i];
-		for (c=0; c<nr_class; c++)
-			for(i=0;i<count[c];i++)
-			{
-				int j = i+rand()%(count[c]-i);
-				swap(index[start[c]+j],index[start[c]+i]);
-			}
-		for(i=0;i<nr_fold;i++)
-		{
-			fold_count[i] = 0;
-			for (c=0; c<nr_class;c++)
-				fold_count[i]+=(i+1)*count[c]/nr_fold-i*count[c]/nr_fold;
-		}
-		fold_start[0]=0;
-		for (i=1;i<=nr_fold;i++)
-			fold_start[i] = fold_start[i-1]+fold_count[i-1];
-		for (c=0; c<nr_class;c++)
-			for(i=0;i<nr_fold;i++)
-			{
-				int begin = start[c]+i*count[c]/nr_fold;
-				int end = start[c]+(i+1)*count[c]/nr_fold;
-				for(int j=begin;j<end;j++)
-				{
-					perm[fold_start[i]] = index[j];
-					fold_start[i]++;
-				}
-			}
-		fold_start[0]=0;
-		for (i=1;i<=nr_fold;i++)
-			fold_start[i] = fold_start[i-1]+fold_count[i-1];
-		free(start);
-		free(label);
-		free(count);
-		free(index);
-		free(fold_count);
-	}
-	else
-	{
-		for(i=0;i<l;i++) perm[i]=i;
-		for(i=0;i<l;i++)
-		{
-			int j = i+rand()%(l-i);
-			swap(perm[i],perm[j]);
-		}
-		for(i=0;i<=nr_fold;i++)
-			fold_start[i]=i*l/nr_fold;
-	}
-
-	for(i=0;i<nr_fold;i++)
-	{
-		int begin = fold_start[i];
-		int end = fold_start[i+1];
-		int j,k;
-		struct svm_problem subprob;
-
-		subprob.l = l-(end-begin);
-		subprob.x = Malloc(struct svm_node*,subprob.l);
-		subprob.y = Malloc(double,subprob.l);
-
-		k=0;
-		for(j=0;j<begin;j++)
-		{
-			subprob.x[k] = prob->x[perm[j]];
-			subprob.y[k] = prob->y[perm[j]];
-			++k;
-		}
-		for(j=end;j<l;j++)
-		{
-			subprob.x[k] = prob->x[perm[j]];
-			subprob.y[k] = prob->y[perm[j]];
-			++k;
-		}
-		struct svm_model *submodel = svm_train(&subprob,param);
-		if(param->probability &&
-		   (param->svm_type == C_SVC || param->svm_type == NU_SVC))
-		{
-			double *prob_estimates=Malloc(double,svm_get_nr_class(submodel));
-			for(j=begin;j<end;j++)
-				target[perm[j]] = svm_predict_probability(submodel,prob->x[perm[j]],prob_estimates);
-			free(prob_estimates);
-		}
-		else
-			for(j=begin;j<end;j++)
-				target[perm[j]] = svm_predict(submodel,prob->x[perm[j]]);
-		svm_free_and_destroy_model(&submodel);
-		free(subprob.x);
-		free(subprob.y);
-	}
-	free(fold_start);
-	free(perm);
-}
-
+//void svm_cross_validation(const svm_problem *prob, const svm_parameter *param, int nr_fold, double *target)
+//{
+//	int i;
+//	int *fold_start;
+//	int l = prob->l;
+//	int *perm = Malloc(int,l);
+//	int nr_class;
+//	if (nr_fold > l)
+//	{
+//		fprintf(stderr,"WARNING: # folds (%d) > # data (%d). Will use # folds = # data instead (i.e., leave-one-out cross validation)\n", nr_fold, l);
+//		nr_fold = l;
+//	}
+//	fold_start = Malloc(int,nr_fold+1);
+//	// stratified cv may not give leave-one-out rate
+//	// Each class to l folds -> some folds may have zero elements
+//	if((param->svm_type == C_SVC ||
+//	    param->svm_type == NU_SVC) && nr_fold < l)
+//	{
+//		int *start = NULL;
+//		int *label = NULL;
+//		int *count = NULL;
+//		svm_group_classes(prob,&nr_class,&label,&start,&count,perm);
+//
+//		// random shuffle and then data grouped by fold using the array perm
+//		int *fold_count = Malloc(int,nr_fold);
+//		int c;
+//		int *index = Malloc(int,l);
+//		for(i=0;i<l;i++)
+//			index[i]=perm[i];
+//		for (c=0; c<nr_class; c++)
+//			for(i=0;i<count[c];i++)
+//			{
+//				int j = i+rand()%(count[c]-i);
+//				swap(index[start[c]+j],index[start[c]+i]);
+//			}
+//		for(i=0;i<nr_fold;i++)
+//		{
+//			fold_count[i] = 0;
+//			for (c=0; c<nr_class;c++)
+//				fold_count[i]+=(i+1)*count[c]/nr_fold-i*count[c]/nr_fold;
+//		}
+//		fold_start[0]=0;
+//		for (i=1;i<=nr_fold;i++)
+//			fold_start[i] = fold_start[i-1]+fold_count[i-1];
+//		for (c=0; c<nr_class;c++)
+//			for(i=0;i<nr_fold;i++)
+//			{
+//				int begin = start[c]+i*count[c]/nr_fold;
+//				int end = start[c]+(i+1)*count[c]/nr_fold;
+//				for(int j=begin;j<end;j++)
+//				{
+//					perm[fold_start[i]] = index[j];
+//					fold_start[i]++;
+//				}
+//			}
+//		fold_start[0]=0;
+//		for (i=1;i<=nr_fold;i++)
+//			fold_start[i] = fold_start[i-1]+fold_count[i-1];
+//		free(start);
+//		free(label);
+//		free(count);
+//		free(index);
+//		free(fold_count);
+//	}
+//	else
+//	{
+//		for(i=0;i<l;i++) perm[i]=i;
+//		for(i=0;i<l;i++)
+//		{
+//			int j = i+rand()%(l-i);
+//			swap(perm[i],perm[j]);
+//		}
+//		for(i=0;i<=nr_fold;i++)
+//			fold_start[i]=i*l/nr_fold;
+//	}
+//
+//	for(i=0;i<nr_fold;i++)
+//	{
+//		int begin = fold_start[i];
+//		int end = fold_start[i+1];
+//		int j,k;
+//		struct svm_problem subprob;
+//
+//		subprob.l = l-(end-begin);
+//		subprob.x = Malloc(struct svm_node*,subprob.l);
+//		subprob.y = Malloc(double,subprob.l);
+//
+//		k=0;
+//		for(j=0;j<begin;j++)
+//		{
+//			subprob.x[k] = prob->x[perm[j]];
+//			subprob.y[k] = prob->y[perm[j]];
+//			++k;
+//		}
+//		for(j=end;j<l;j++)
+//		{
+//			subprob.x[k] = prob->x[perm[j]];
+//			subprob.y[k] = prob->y[perm[j]];
+//			++k;
+//		}
+//		struct svm_model *submodel = svm_train(&subprob,param);
+//		if(param->probability &&
+//		   (param->svm_type == C_SVC || param->svm_type == NU_SVC))
+//		{
+//			double *prob_estimates=Malloc(double,svm_get_nr_class(submodel));
+//			for(j=begin;j<end;j++)
+//				target[perm[j]] = svm_predict_probability(submodel,prob->x[perm[j]],prob_estimates);
+//			free(prob_estimates);
+//		}
+//		else
+//			for(j=begin;j<end;j++)
+//				target[perm[j]] = svm_predict(submodel,prob->x[perm[j]]);
+//		svm_free_and_destroy_model(&submodel);
+//		free(subprob.x);
+//		free(subprob.y);
+//	}
+//	free(fold_start);
+//	free(perm);
+//}
 
 int svm_get_svm_type(const svm_model *model)
 {
@@ -3310,3 +3315,5 @@ void svm_set_print_string_function(void (*print_func)(const char *))
 	else
 		svm_print_string = print_func;
 }
+
+} //libsvm

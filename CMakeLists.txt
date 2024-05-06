@@ -7,14 +7,12 @@ project(libsvm)
 
 set(CURR_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}")
 
-
 set_property(GLOBAL PROPERTY LIBSVM_INCLUDE_DIR ${CURR_INCLUDE_DIR})
 ocv_include_directories(${CURR_INCLUDE_DIR})
 
-
-file(GLOB_RECURSE svm_headers RELATIVE "${CMAKE_CURRENT_LIST_DIR}" "*.h")
-file(GLOB_RECURSE svm_sources RELATIVE "${CMAKE_CURRENT_LIST_DIR}" "*.c")
-file(GLOB_RECURSE svmcpp_sources RELATIVE "${CMAKE_CURRENT_LIST_DIR}" "*.cpp")
+file(GLOB_RECURSE svm_headers RELATIVE "${CMAKE_CURRENT_LIST_DIR}" "svm.h")
+#file(GLOB_RECURSE svm_sources RELATIVE "${CMAKE_CURRENT_LIST_DIR}" "*.c")
+file(GLOB_RECURSE svm_sources RELATIVE "${CMAKE_CURRENT_LIST_DIR}" "svm.cpp")
 
 message(STATUS "libsvm will be used")
 
@@ -23,13 +21,9 @@ message(STATUS "libsvm will be used")
 # ----------------------------------------------------------------------------------
 
 
-add_library(${PROJECT_NAME} STATIC ${OPENCV_3RDPARTY_EXCLUDE_FROM_ALL} ${svm_headers} ${svm_sources} ${svmcpp_sources})
+#add_library(${PROJECT_NAME} STATIC ${OPENCV_3RDPARTY_EXCLUDE_FROM_ALL} ${svm_headers} ${svm_sources} ${svmcpp_sources})
+add_library(${PROJECT_NAME} STATIC ${OPENCV_3RDPARTY_EXCLUDE_FROM_ALL} ${svm_headers} ${svm_sources})
 ocv_warnings_disable(CMAKE_C_FLAGS -Wunused-variable)
-
-message(${PROJECT_NAME})
-message(${OPENCV_DEBUG_POSTFIX})
-message(${3P_LIBRARY_OUTPUT_PATH})
-
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
   OUTPUT_NAME ${PROJECT_NAME}
